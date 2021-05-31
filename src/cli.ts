@@ -12,6 +12,10 @@ const args = [
   ...process.argv,
   '-t',
   path.resolve(__dirname, './transformer.js'),
+  '--parser',
+  'babylon',
+  '--parser-config',
+  path.resolve(__dirname, '../babylon.config.json'),
 ];
 
 console.log(`Running jscodeshift with: ${args.join(' ')}`);

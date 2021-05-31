@@ -4,11 +4,12 @@
   "description": "",
   "main": "index.js",
   "bin": {
-    "mangle-lodash-get": "./lib/cli.js"
+    "mangle-lodash-get": "./bin/cli.js"
   },
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublish": "npm run build"
   },
   "author": "",
   "license": "ISC",
@@ -22,5 +23,8 @@
   "devDependencies": {
     "@types/lodash": "^4.14.170",
     "lodash": "^4.17.21"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npm.alibaba-inc.com"
   }
 }

@@ -1,29 +1,16 @@
 import { ExpressionKind } from 'ast-types/gen/kinds';
 import {
   API,
-  ASTNode,
   ASTPath,
   CallExpression,
   Collection,
   FileInfo,
-  Identifier,
   ImportDeclaration,
   ImportDefaultSpecifier,
   ImportSpecifier,
-  JSXAttribute,
-  JSXElement,
-  JSXIdentifier,
-  JSXOpeningElement,
-  Literal,
-  LogicalExpression,
-  StringLiteral,
-  SpreadElement,
 } from 'jscodeshift';
 import parseAccessor from './findListAccessor';
-
-function isJSXOpenElement(node: ASTNode): node is JSXOpeningElement {
-  return node.type === 'JSXOpeningElement';
-}
+import { isIdentifier, isLiteral, isSpreadElement } from './isType';
 
 const LODASH_PACKAGE_NAME = 'lodash';
 
@@ -33,29 +20,18 @@ const enum Identifiers {
   FormItemRulesField = 'rules',
   FOrmItemInitialValueField = 'initialValue',
 }
+type DeepPartial<T> = {
+  [P in keyof T]?: DeepPartial<T[P]>;
+};
 
-function isLiteral(node: ASTNode): node is Literal {
-  return node.type === 'Literal';
-}
-
-function isIdentifier(node: ASTNode): node is Identifier {
-  return node.type === 'Identifier';
-}
-
-function isJSXAttribute(node: ASTNode): node is JSXAttribute {
-  return node.type === 'JSXAttribute';
-}
-
-function isSpreadElement(node: ASTNode): node is SpreadElement {
-  return node.type === 'SpreadElement';
-}
+type CallExpressionPredicate = (col: Collection) => DeepPartial<CallExpression>;
 
 /**
  * find import {get} from 'lodash'
  *
  * @param ast
  */
-const findDestructedImport = (ast: Collection) => {
+const findDestructedImport: CallExpressionPredicate = (ast) => {
   const found = ast
     .find(ImportDeclaration, {
       source: {
@@ -66,37 +42,37 @@ const findDestructedImport = (ast: Collection) => {
 
   if (found.length) {
     const node = found.get();
-    return node.value.imported.name;
+    return { callee: { name: node.value.imported.name } };
   }
 };
 
 /**
- * find import get(or alias) from 'lodash/get'
+ * find import get (or alias) from 'lodash/get'
  * @param ast
  * @returns
  */
-const findFileImport = (ast: Collection) => {
+const findFileImport: CallExpressionPredicate = (ast) => {
   const found = ast
     .find(ImportDeclaration, {
       source: {
         value: [LODASH_PACKAGE_NAME, 'get'].join('/'),
       },
     })
-    .find(ImportSpecifier);
+    .find(ImportDefaultSpecifier);
 
   if (found.length) {
-    console.log(found);
     const node = found.get();
-    return node.value.name;
+
+    return { callee: { name: node.value.local.name } };
   }
 };
 
 /**
- * find import lodash 'lodash'
+ * find import lodash from 'lodash'
  * @param ast
  * @returns
  */
-const findDefaultImport = (ast: Collection) => {
+const findDefaultImport: CallExpressionPredicate = (ast) => {
   const found = ast
     .find(ImportDeclaration, {
       source: {
@@ -107,7 +83,13 @@ const findDefaultImport = (ast: Collection) => {
 
   if (found.length) {
     const node = found.get();
-    return node.value.name;
+
+    return {
+      callee: {
+        object: { name: node.value.local.name },
+        property: { name: 'get' },
+      },
+    };
   }
 };
 const generateOptionalChainingNode = (
@@ -174,20 +156,16 @@ export default (fileInfo: FileInfo, api: API, options: any) => {
   let found;
   found = findDestructedImport(ast);
 
-  console.log(found);
-  if (found) {
-    ast
-      .find(CallExpression, { callee: { name: found } })
-      .forEach((expression) => {
+  [findDefaultImport, findFileImport, findDestructedImport]
+    .map((func) => func(ast))
+    .filter(Boolean)
+    .forEach((predicate) => {
+      ast.find(CallExpression, predicate).forEach((expression) => {
         const replaced = generateOptionalChainingNode(api, ast, expression);
 
         expression.replace(replaced);
       });
-  }
-
-  findFileImport(ast);
-
-  findDefaultImport(ast);
+    });
 
   return ast.toSource();
 };
