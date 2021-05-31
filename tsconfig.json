@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2015",
+    "esModuleInterop": true,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "sourceMap": true,
+    "baseUrl": ".",
+    "outDir": "bin"
+  },
+  "include": [
+    "src/**/*"
+  ]
+}
