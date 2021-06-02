@@ -5,10 +5,15 @@ import {
   JSXOpeningElement,
   Literal,
   SpreadElement,
+  StringLiteral,
 } from 'jscodeshift';
 
 export function isLiteral(node: ASTNode): node is Literal {
   return node.type === 'Literal';
+}
+
+export function isStringLiteral(node: ASTNode): node is StringLiteral {
+  return node.type === 'StringLiteral';
 }
 
 export function isIdentifier(node: ASTNode): node is Identifier {

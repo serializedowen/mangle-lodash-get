@@ -2,24 +2,41 @@
 
 import path from 'path';
 import execa from 'execa';
-
+import isGitClean from 'is-git-clean';
+import { exit } from 'process';
+import { green, red, yellow } from 'chalk';
 const jscodeshiftExecutable = require.resolve('.bin/jscodeshift');
 
 process.argv.shift();
 process.argv.shift();
 
-const args = [
-  ...process.argv,
-  '-t',
-  path.resolve(__dirname, './transformer.js'),
-  '--parser',
-  'babylon',
-  '--parser-config',
-  path.resolve(__dirname, '../babylon.config.json'),
-];
+let target = process.argv.shift();
 
-console.log(`Running jscodeshift with: ${args.join(' ')}`);
+if (!target) {
+  console.log(
+    yellow(`======== Warning ========
+Directory or file not provided, running mangle-lodash-get in current working directory.`)
+  );
 
-execa(jscodeshiftExecutable, args, {
-  stdio: 'inherit',
-}).catch((err) => console.error(err));
+  target = process.cwd();
+}
+
+isGitClean(target).then(() => {
+  const args = [
+    '-t',
+    path.resolve(__dirname, './transformer.js'),
+    '--parser',
+    'babylon',
+    '--parser-config',
+    path.resolve(__dirname, '../babylon.config.json'),
+    '--extensions=tsx,ts,jsx,js',
+
+    target,
+  ];
+
+  console.log(green(`Running jscodeshift with: ${args.join(' ')}`));
+
+  execa(jscodeshiftExecutable, args, {
+    stdio: 'inherit',
+  }).catch((err) => console.error(err));
+});

@@ -7,19 +7,20 @@ import {
   FileInfo,
   ImportDeclaration,
   ImportDefaultSpecifier,
+  ImportNamespaceSpecifier,
   ImportSpecifier,
 } from 'jscodeshift';
+
 import parseAccessor from './findListAccessor';
-import { isIdentifier, isLiteral, isSpreadElement } from './isType';
+import {
+  isIdentifier,
+  isLiteral,
+  isSpreadElement,
+  isStringLiteral,
+} from './isType';
 
 const LODASH_PACKAGE_NAME = 'lodash';
 
-const enum Identifiers {
-  FormItemIdentifier = 'FormItem',
-  FormItemNameAttribute = 'name',
-  FormItemRulesField = 'rules',
-  FOrmItemInitialValueField = 'initialValue',
-}
 type DeepPartial<T> = {
   [P in keyof T]?: DeepPartial<T[P]>;
 };
@@ -43,6 +44,30 @@ const findDestructedImport: CallExpressionPredicate = (ast) => {
   if (found.length) {
     const node = found.get();
     return { callee: { name: node.value.imported.name } };
+  }
+};
+
+/**
+ *
+ * @param ast
+ */
+const findNamespacedImport: CallExpressionPredicate = (ast) => {
+  const found = ast
+    .find(ImportDeclaration, {
+      source: {
+        value: LODASH_PACKAGE_NAME,
+      },
+    })
+    .find(ImportNamespaceSpecifier);
+
+  if (found.length) {
+    const node = found.get();
+    return {
+      callee: {
+        object: { name: node.value.local.name },
+        property: { name: 'get' },
+      },
+    };
   }
 };
 
@@ -116,7 +141,7 @@ const generateOptionalChainingNode = (
   const propertyPath = args[1];
   let ret = target;
 
-  if (isLiteral(propertyPath)) {
+  if (isLiteral(propertyPath) || isStringLiteral(propertyPath)) {
     const tokens = (<string>propertyPath.value).split('.');
 
     while (tokens.length) {
@@ -139,8 +164,7 @@ const generateOptionalChainingNode = (
 
   // 暂时跳过path为变量的情况   get(aaa, path, 'tt');
   if (isIdentifier(propertyPath)) {
-    console.log(propertyPath);
-    astPath.scope;
+    return;
   }
 
   if (hasDefaultValue) {
@@ -153,10 +177,12 @@ const generateOptionalChainingNode = (
 export default (fileInfo: FileInfo, api: API, options: any) => {
   const ast = api.jscodeshift(fileInfo.source);
 
-  let found;
-  found = findDestructedImport(ast);
-
-  [findDefaultImport, findFileImport, findDestructedImport]
+  [
+    findDefaultImport,
+    findFileImport,
+    findDestructedImport,
+    findNamespacedImport,
+  ]
     .map((func) => func(ast))
     .filter(Boolean)
     .forEach((predicate) => {
