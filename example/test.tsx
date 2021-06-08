@@ -4,7 +4,7 @@ import * as _ from 'lodash';
 import { get } from 'lodash';
 import gg from 'lodash/get';
 
-export default function test() {
+export default function Test() {
   const aaa = {};
 
   lodash.get(aaa, 'a.b.c');

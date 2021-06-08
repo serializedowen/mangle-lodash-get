@@ -3,7 +3,6 @@
 import path from 'path';
 import execa from 'execa';
 import isGitClean from 'is-git-clean';
-import { exit } from 'process';
 import { green, red, yellow } from 'chalk';
 const jscodeshiftExecutable = require.resolve('.bin/jscodeshift');
 
